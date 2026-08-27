@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IDN Homograph Attack Explorer | Unicode & Punycode Security Demo</title>
+<meta name="description" content="Learn how IDN homograph attacks use Unicode lookalike characters to mimic trusted domains. Explore homoglyphs, Punycode, mixed-script risks, browser protections, and interactive examples.">
+<meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">
+<meta name="author" content="IDN Homograph Explorer">
+<meta name="theme-color" content="#3478f6">
+<link rel="canonical" href="https://idnhomograph.org/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="IDN Homograph Explorer">
+<meta property="og:title" content="IDN Homograph Attack Explorer">
+<meta property="og:description" content="Interactive educational tool for understanding Unicode lookalike domains, Punycode, mixed-script risks, and browser protections.">
+<meta property="og:url" content="https://idnhomograph.org/">
+<meta property="og:locale" content="en_NZ">
+
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="IDN Homograph Attack Explorer">
+<meta name="twitter:description" content="Learn how visually similar Unicode characters can create deceptive lookalike domains.">
+
+<link rel="alternate" hreflang="en" href="https://idnhomograph.org/">
+<link rel="alternate" hreflang="x-default" href="https://idnhomograph.org/">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://idnhomograph.org/#website",
+      "url": "https://idnhomograph.org/",
+      "name": "IDN Homograph Explorer",
+      "description": "Educational cybersecurity resource about IDN homograph attacks, Unicode confusables, Punycode and lookalike domains.",
+      "inLanguage": "en"
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://idnhomograph.org/#tool",
+      "name": "IDN Homograph Explorer",
+      "applicationCategory": "SecurityApplication",
+      "operatingSystem": "Any modern web browser",
+      "url": "https://idnhomograph.org/IDN_Homograph_Fraud_Demo.html",
+      "isAccessibleForFree": true,
+      "description": "Browser-based educational tool for exploring Unicode homoglyphs, IDN lookalike domains and Punycode representations."
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://idnhomograph.org/#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Does an IDN automatically mean a domain is malicious?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Internationalized domain names are legitimate. Risk comes from deceptive use of visually confusable characters, not from Unicode itself."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is Punycode?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Punycode is an ASCII-compatible encoding used to represent Unicode domain labels in DNS. Internationalized labels commonly begin with xn--."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Why can two domain names look identical but be different?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Unicode contains characters from different scripts that can look alike while having different code points. Computers compare the code points, not only their visual appearance."
+          }
+        }
+      ]
+    }
+  ]
+}
+</script>
+<style>
+  :root{
+    --bg:#f7f9fc;
+    --panel:#ffffff;
+    --navy:#17324d;
+    --navy-2:#224b73;
+    --blue:#2f6fb2;
+    --blue-soft:#eaf2fb;
+    --green:#2d7d65;
+    --green-soft:#e9f6f1;
+    --amber:#a96a18;
+    --amber-soft:#fff6e8;
+    --red:#b94a48;
+    --red-soft:#fff0ef;
+    --text:#1f2937;
+    --muted:#667085;
+    --line:#dfe6ee;
+    --shadow:0 10px 30px rgba(31,41,55,.06);
+  }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;
+    color:var(--text);
+    background:var(--bg);
+    font-family:"Segoe UI",Inter,-apple-system,BlinkMacSystemFont,Roboto,Arial,sans-serif;
+    line-height:1.6;
+  }
+  a{color:inherit;text-decoration:none}
+  .shell{width:min(1120px,calc(100% - 32px));margin:0 auto}
+
+  header{
+    background:var(--navy);
+    color:#fff;
+    border-bottom:4px solid #9cc3e6;
+    position:sticky;
+    top:0;
+    z-index:20;
+  }
+  .nav{
+    min-height:72px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:20px;
+  }
+  .brand{display:flex;align-items:center;gap:12px;font-weight:700}
+  .brand-mark{
+    width:38px;height:38px;border-radius:8px;
+    background:#fff;color:var(--navy);
+    display:grid;place-items:center;
+    font-weight:800;
+  }
+  .nav-links{display:flex;gap:22px;font-size:14px;color:#d9e8f5}
+  .nav-links a:hover{color:#fff}
+  .nav-actions{display:flex;gap:10px}
+  .btn{
+    border-radius:8px;
+    padding:10px 16px;
+    font-weight:700;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    border:1px solid transparent;
+    cursor:pointer;
+  }
+  .btn-primary{background:#fff;color:var(--navy)}
+  .btn-light{background:transparent;color:#fff;border-color:#7fa5c5}
+
+  .hero{
+    padding:64px 0 54px;
+    display:grid;
+    grid-template-columns:1.05fr .95fr;
+    gap:44px;
+    align-items:center;
+  }
+  .eyebrow{
+    display:inline-flex;
+    padding:6px 10px;
+    border-radius:6px;
+    background:var(--blue-soft);
+    color:var(--blue);
+    font-size:12px;
+    font-weight:700;
+    letter-spacing:.02em;
+  }
+  h1,h2,h3{color:var(--navy);line-height:1.2}
+  h1{
+    font-family:Georgia,"Times New Roman",serif;
+    font-size:clamp(42px,5.8vw,68px);
+    letter-spacing:-.035em;
+    margin:18px 0;
+    font-weight:700;
+  }
+  .hero p{
+    color:#4b5563;
+    font-size:18px;
+    max-width:680px;
+  }
+  .hero-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px}
+  .hero .btn-primary{background:var(--navy);color:#fff}
+  .hero .btn-light{background:#fff;color:var(--navy);border-color:var(--line)}
+
+  .demo-card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:14px;
+    box-shadow:var(--shadow);
+    overflow:hidden;
+  }
+  .demo-top{
+    padding:14px 18px;
+    background:#f1f5f9;
+    border-bottom:1px solid var(--line);
+    color:var(--navy);
+    font-size:13px;
+    font-weight:700;
+  }
+  .demo-graph{height:310px;position:relative;background:#fff}
+  .demo-ring{
+    width:190px;height:190px;border:1px dashed #cfd8e3;border-radius:50%;
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  }
+  .demo-node{
+    position:absolute;width:62px;height:62px;border-radius:50%;
+    display:grid;place-items:center;background:#fff;
+    border:1.5px solid var(--red);font-size:11px;z-index:3;
+  }
+  .demo-node.center{
+    left:50%;top:50%;transform:translate(-50%,-50%);
+    border:2px solid var(--blue);background:var(--blue-soft);
+    font-weight:700;
+  }
+  .demo-node.top{left:50%;top:30px;transform:translateX(-50%)}
+  .demo-node.left{left:60px;top:50%;transform:translateY(-50%);border-color:var(--amber)}
+  .demo-node.right{right:60px;top:50%;transform:translateY(-50%)}
+  .demo-node.bottom{left:50%;bottom:30px;transform:translateX(-50%)}
+  .demo-line{
+    position:absolute;left:50%;top:50%;height:1px;background:#aeb8c4;
+    transform-origin:0 50%;z-index:1;
+  }
+  .demo-line.t{width:95px;transform:rotate(-90deg)}
+  .demo-line.r{width:128px}
+  .demo-line.b{width:95px;transform:rotate(90deg)}
+  .demo-line.l{width:128px;transform:rotate(180deg)}
+  .demo-summary{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line)}
+  .demo-summary div{text-align:center;padding:13px 8px}
+  .demo-summary div+div{border-left:1px solid var(--line)}
+  .demo-summary small{display:block;color:var(--muted);font-size:10px}
+  .demo-summary strong{font-size:13px;color:var(--navy)}
+
+  section{padding:60px 0}
+  section:nth-of-type(even){background:#fff}
+  .section-head{max-width:760px;margin-bottom:28px}
+  .section-head h2{
+    font-family:Georgia,"Times New Roman",serif;
+    font-size:38px;
+    letter-spacing:-.02em;
+    margin:0 0 10px;
+  }
+  .section-head p{margin:0;color:var(--muted);line-height:1.7}
+
+  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:20px;
+  }
+  .icon{
+    width:38px;height:38px;border-radius:8px;
+    background:var(--blue-soft);color:var(--blue);
+    display:grid;place-items:center;
+    font-weight:800;margin-bottom:14px;
+  }
+  .card h3{font-size:17px;margin:0 0 8px}
+  .card p{margin:0;color:var(--muted);font-size:14px;line-height:1.6}
+
+  .how{display:grid;grid-template-columns:.8fr 1.2fr;gap:34px;align-items:start}
+  .steps{display:grid;gap:12px}
+  .step{
+    display:grid;grid-template-columns:42px 1fr;gap:14px;
+    background:#fff;border:1px solid var(--line);
+    border-radius:10px;padding:15px;
+  }
+  .step-num{
+    width:34px;height:34px;border-radius:8px;background:var(--navy);color:#fff;
+    display:grid;place-items:center;font-weight:700;font-size:13px;
+  }
+  .step h3{margin:0 0 4px;font-size:15px}
+  .step p{margin:0;color:var(--muted);font-size:13px}
+
+  .code-card{
+    background:#0f2235;color:#e5eef7;
+    border-radius:12px;padding:22px;
+    border:1px solid #1c3b57;
+  }
+  .code-label{color:#9eb4c7;font-size:11px;margin-bottom:8px}
+  .code-line{font-family:Consolas,"Courier New",monospace;font-size:15px;line-height:1.9}
+  .bad{color:#ffb5b2}.good{color:#9fe0ca}.blue{color:#9dccf4}
+
+  .warning-box{
+    background:#fff;
+    border-left:4px solid var(--amber);
+    border-top:1px solid var(--line);
+    border-right:1px solid var(--line);
+    border-bottom:1px solid var(--line);
+    border-radius:10px;
+    padding:18px;
+    display:grid;grid-template-columns:44px 1fr;gap:14px;
+  }
+  .warning-icon{
+    width:38px;height:38px;border-radius:8px;
+    background:var(--amber-soft);color:var(--amber);
+    display:grid;place-items:center;font-weight:800;
+  }
+  .warning-box h3{margin:0 0 6px;font-size:16px}
+  .warning-box p{margin:0;color:var(--muted);font-size:14px}
+
+  .anatomy{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .compare-box{
+    background:#fff;border:1px solid var(--line);border-radius:12px;padding:20px;
+  }
+  .compare-box h3{font-size:14px;margin:0 0 12px}
+  .domain-big{font-size:28px;font-weight:650;margin:8px 0;color:var(--navy)}
+  .meta{font-size:12px;color:var(--muted);line-height:1.8}
+  .pill{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:700}
+  .pill.safe{background:var(--green-soft);color:var(--green)}
+  .pill.risk{background:var(--red-soft);color:var(--red)}
+
+  .faq{display:grid;gap:10px}
+  details{
+    background:#fff;border:1px solid var(--line);border-radius:10px;padding:15px 17px;
+  }
+  summary{cursor:pointer;font-weight:700;color:var(--navy)}
+  details p{color:var(--muted);font-size:14px}
+
+  .cta{
+    padding:30px;
+    border-radius:14px;
+    background:var(--navy);
+    color:#fff;
+    display:flex;justify-content:space-between;align-items:center;gap:20px;
+  }
+  .cta h2{color:#fff;margin:0 0 8px;font-size:28px}
+  .cta p{margin:0;color:#d9e7f3}
+  .cta .btn{background:#fff;color:var(--navy)}
+
+  footer{
+    background:#10263a;
+    color:#b9c8d5;
+    padding:32px 0 40px;
+    font-size:13px;
+  }
+  .footer-row{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
+  .footer-links{display:flex;gap:18px;flex-wrap:wrap}
+
+  @media(max-width:900px){
+    .nav-links{display:none}
+    .hero,.how,.anatomy{grid-template-columns:1fr}
+    .cards{grid-template-columns:1fr 1fr}
+  }
+  @media(max-width:620px){
+    .shell{width:min(100% - 20px,1120px)}
+    .nav-actions .btn-light{display:none}
+    .hero{padding-top:46px}
+    h1{font-size:44px}
+    .cards{grid-template-columns:1fr}
+    .demo-node.left{left:22px}
+    .demo-node.right{right:22px}
+    .demo-summary{grid-template-columns:1fr}
+    .demo-summary div+div{border-left:0;border-top:1px solid var(--line)}
+    .cta{flex-direction:column;align-items:flex-start}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="shell nav">
+    <a class="brand" href="#top">
+      <span class="brand-mark">ID</span>
+      <span>IDN Homograph Explorer</span>
+    </a>
+
+    <nav class="nav-links">
+      <a href="#learn">Learn</a>
+      <a href="#how">How It Works</a>
+      <a href="#protection">Protection</a>
+      <a href="#references">References</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+
+    <div class="nav-actions">
+      <a class="btn btn-light" href="#about">About</a>
+      <a class="btn btn-primary" href="IDN_Homograph_Fraud_Demo.html">Launch Tool</a>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+  <div class="shell hero">
+    <div>
+      <span class="eyebrow">Open Educational Cybersecurity Resource</span>
+      <h1>IDN homograph attacks:<br>same look, different code.</h1>
+      <p>
+        Learn how an IDN homograph attack uses Unicode lookalike characters (homoglyphs) to make
+        different domain names appear almost identical, and how Punycode and browser protections help reveal the difference.
+      </p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="IDN_Homograph_Fraud_Demo.html">Start Interactive Lesson</a>
+        <a class="btn btn-light" href="#learn">Read the Lesson</a>
+      </div>
+    </div>
+
+    <div class="demo-card" aria-label="IDN homograph example">
+      <div class="demo-top">Lesson example: visually confusable domains</div>
+      <div class="demo-graph">
+        <div class="demo-ring"></div>
+        <div class="demo-line t"></div>
+        <div class="demo-line r"></div>
+        <div class="demo-line b"></div>
+        <div class="demo-line l"></div>
+        <div class="demo-node center">google.com</div>
+        <div class="demo-node top">gооgle.com</div>
+        <div class="demo-node left">gοοgle.com</div>
+        <div class="demo-node right">gооgle.com</div>
+        <div class="demo-node bottom">googlе.com</div>
+      </div>
+      <div class="demo-summary">
+        <div><small>Concept</small><strong>IDN Homograph</strong></div>
+        <div><small>Common Signal</small><strong>Mixed Scripts</strong></div>
+        <div><small>Purpose</small><strong>Education</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <section id="learn">
+    <div class="shell">
+      <div class="section-head">
+        <h2>Lesson 1: What is an IDN homograph?</h2>
+        <p>
+          Internationalized Domain Names (IDNs) allow Unicode characters to appear in domain names.
+          An IDN homograph attack exploits visually confusable Unicode characters from scripts such as
+          Cyrillic and Greek to imitate familiar Latin letters. The result can be a lookalike domain that
+          appears nearly identical to a trusted hostname while remaining a different string underneath.
+        </p>
+      </div>
+
+      <div class="cards">
+        <div class="card">
+          <div class="icon">Aa</div>
+          <h3>Unicode lookalikes</h3>
+          <p>A Latin letter such as <strong>a</strong> may have visually similar characters in Cyrillic, Greek, fullwidth Latin, or other Unicode ranges.</p>
+        </div>
+
+        <div class="card">
+          <div class="icon">xn</div>
+          <h3>Punycode</h3>
+          <p>DNS uses an ASCII-compatible representation for internationalized labels. Suspicious Unicode domains may therefore appear as an <strong>xn--</strong> encoded hostname.</p>
+        </div>
+
+        <div class="card">
+          <div class="icon">!</div>
+          <h3>Visual deception</h3>
+          <p>The danger comes from what a person sees. Two strings can look alike while containing different code points and resolving to different destinations.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="how">
+    <div class="shell how">
+      <div class="section-head">
+        <h2>Lesson 2: How the deception works</h2>
+        <p>
+          A homograph does not require changing the entire word. Replacing only one character may be enough
+          to make a hostname look familiar at a glance.
+        </p>
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div>
+            <h3>Start with a familiar ASCII name</h3>
+            <p>Example: <strong>paypal.com</strong> using ordinary Latin characters.</p>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">2</div>
+          <div>
+            <h3>Replace a character with a visual lookalike</h3>
+            <p>A Unicode character may resemble the original letter while having a different code point.</p>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">3</div>
+          <div>
+            <h3>The hostname is no longer the same string</h3>
+            <p>The browser or DNS layer may represent the internationalized label using Punycode.</p>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">4</div>
+          <div>
+            <h3>A person may still read it as the trusted name</h3>
+            <p>This is why character inspection and browser protections matter.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="shell">
+      <div class="section-head">
+        <h2>Lesson 3: Look identical, encode differently</h2>
+        <p>Character-level inspection reveals the difference that visual inspection may miss.</p>
+      </div>
+
+      <div class="code-card">
+        <div class="code-label">Character comparison</div>
+        <div class="code-line"><span class="good">Latin a</span> &nbsp;&nbsp;&nbsp; U+0061</div>
+        <div class="code-line"><span class="bad">Cyrillic а</span> &nbsp; U+0430</div>
+        <div class="code-line"><span class="blue">Visual result:</span> both may render almost the same depending on font and context.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="protection">
+    <div class="shell">
+      <div class="section-head">
+        <h2>Lesson 4: Browser protections</h2>
+        <p>
+          IDN homographs are a real concept, but modern browsers do not simply display every internationalized
+          hostname as Unicode. Suspicious combinations may be displayed in ASCII-compatible Punycode instead.
+        </p>
+      </div>
+
+      <div class="warning-box">
+        <div class="warning-icon">!</div>
+        <div>
+          <h3>Important context</h3>
+          <p>
+            A visual example in this educational tool does not guarantee that Chrome, Firefox, Safari, Edge,
+            or another browser will display the same hostname in Unicode. Browser display rules, script combinations,
+            font rendering, and IDN policies all affect what a user actually sees.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="shell">
+      <div class="section-head">
+        <h2>Defensive checklist: what should you inspect?</h2>
+        <p>These signals are more useful than relying only on whether a hostname “looks right.”</p>
+      </div>
+
+      <div class="cards">
+        <div class="card">
+          <div class="icon">01</div>
+          <h3>Non-ASCII characters</h3>
+          <p>Check whether the hostname contains characters outside ordinary ASCII.</p>
+        </div>
+
+        <div class="card">
+          <div class="icon">02</div>
+          <h3>Mixed writing systems</h3>
+          <p>A hostname combining Latin and Cyrillic or Greek characters deserves additional scrutiny.</p>
+        </div>
+
+        <div class="card">
+          <div class="icon">03</div>
+          <h3>Punycode representation</h3>
+          <p>An <strong>xn--</strong> label is a useful clue that the hostname contains internationalized characters.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="about">
+    <div class="shell">
+      <div class="section-head">
+        <h2>Educational use only</h2>
+        <p>
+          This project is designed to teach Unicode, Punycode, IDN homographs, and defensive domain inspection.
+          It is not intended to assist phishing, impersonation, credential theft, or deceptive domain registration.
+        </p>
+      </div>
+
+      <div class="anatomy">
+        <div class="compare-box">
+          <span class="pill safe">Genuine ASCII</span>
+          <div class="domain-big">google.com</div>
+          <div class="meta">
+            Script: Latin<br>
+            Mixed scripts: No<br>
+            Non-ASCII characters: 0
+          </div>
+        </div>
+
+        <div class="compare-box">
+          <span class="pill risk">Lookalike example</span>
+          <div class="domain-big">gооgle.com</div>
+          <div class="meta">
+            Script mix: Latin + Cyrillic<br>
+            Non-ASCII characters: Present<br>
+            Inspect Unicode code points and Punycode
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <section id="references">
+    <div class="shell">
+      <div class="section-head">
+        <h2>Further reading and standards</h2>
+        <p>
+          The educational explanations on this site are grounded in published standards and established
+          security research on internationalized domain names and Unicode confusables.
+        </p>
+      </div>
+
+      <div class="cards">
+        <div class="card">
+          <div class="icon">U</div>
+          <h3>Unicode UTS #39</h3>
+          <p>Unicode Security Mechanisms defines confusable detection concepts, including mixed-script and whole-script confusables.</p>
+          <p style="margin-top:12px"><a href="https://www.unicode.org/reports/tr39/" rel="noopener noreferrer" target="_blank" style="color:var(--blue);font-weight:700">Read Unicode UTS #39 →</a></p>
+        </div>
+
+        <div class="card">
+          <div class="icon">IC</div>
+          <h3>ICANN on IDN homographs</h3>
+          <p>ICANN describes how visually similar characters can enable domain-name spoofing in internationalized domain names.</p>
+          <p style="margin-top:12px"><a href="https://www.icann.org/en/announcements/details/icann-statement-on-idn-homograph-attacks-and-request-for-public-comment-23-2-2005-en" rel="noopener noreferrer" target="_blank" style="color:var(--blue);font-weight:700">Read ICANN guidance →</a></p>
+        </div>
+
+        <div class="card">
+          <div class="icon">R</div>
+          <h3>Academic research</h3>
+          <p>Peer-reviewed work has studied detection of suspicious IDN homograph domains using DNS measurements and visual similarity techniques.</p>
+          <p style="margin-top:12px"><a href="https://research.utwente.nl/en/publications/a-case-of-identity-detection-of-suspicious-idn-homograph-domains-/" rel="noopener noreferrer" target="_blank" style="color:var(--blue);font-weight:700">View research →</a></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq">
+    <div class="shell">
+      <div class="section-head">
+        <h2>Frequently asked questions</h2>
+      </div>
+
+      <div class="faq">
+        <details>
+          <summary>Does an IDN automatically mean a domain is malicious?</summary>
+          <p>No. Internationalized domain names are legitimate and important for users of non-Latin writing systems. Risk comes from deceptive use, not from Unicode itself.</p>
+        </details>
+
+        <details>
+          <summary>What is Punycode?</summary>
+          <p>Punycode is an ASCII-compatible encoding used to represent Unicode domain labels in the DNS system. Internationalized labels commonly begin with <strong>xn--</strong>.</p>
+        </details>
+
+        <details>
+          <summary>Why do some examples look identical on one device but different on another?</summary>
+          <p>Fonts, operating systems, browsers, and script-rendering rules can change how similar two Unicode characters appear.</p>
+        </details>
+
+        <details>
+          <summary>Does this website send entered domains to a server?</summary>
+          <p>The included interactive demo is designed to perform its transformations locally in the browser. If you later add analytics, APIs, or server-side processing, update this statement and your privacy information accordingly.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="shell">
+      <div class="cta">
+        <div>
+          <h2>Explore the characters yourself.</h2>
+          <p>Use Character Explorer, curated examples, and the Try It Yourself transformation lab.</p>
+        </div>
+        <a class="btn" href="IDN_Homograph_Fraud_Demo.html">Launch Interactive Tool →</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="shell footer-row">
+    <div>© 2026 IDN Homograph Explorer · Educational cybersecurity project</div>
+    <div class="footer-links">
+      <a href="#learn">Learn</a>
+      <a href="#protection">Browser Protections</a>
+      <a href="#about">Educational Use</a>
+      <a href="#references">References</a>
+      <a href="#faq">FAQ</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

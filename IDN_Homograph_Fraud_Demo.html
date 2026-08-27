@@ -1,0 +1,2161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>IDN Homograph Fraud Demo</title>
+<style>
+  :root{
+    --bg:#f7f9fc;
+    --panel:#ffffff;
+    --navy:#17324d;
+    --navy-2:#224b73;
+    --line:#dfe6ee;
+    --text:#1f2937;
+    --muted:#667085;
+    --blue:#2f6fb2;
+    --blue2:#245edb;
+    --danger:#b94a48;
+    --warn:#a96a18;
+    --safe:#2d7d65;
+    --soft-blue:#eaf2fb;
+    --soft-red:#fff0ef;
+    --soft-amber:#fff6e8;
+    --shadow:0 10px 30px rgba(31,41,55,.06);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    background:#f7f9fc;
+    color:var(--text);
+    font-family:"Segoe UI",Inter,-apple-system,BlinkMacSystemFont,Roboto,Arial,sans-serif;
+    line-height:1.6;
+  }
+
+  .app{
+    width:min(1040px,calc(100% - 32px));
+    margin:28px auto 50px;
+  }
+
+  .hero{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:18px;
+    margin-bottom:18px;
+  }
+
+  .hero h1{
+    margin:0;
+    font-size:28px;
+    letter-spacing:-.02em;
+  }
+
+  .hero p{
+    margin:7px 0 0;
+    color:var(--muted);
+    line-height:1.55;
+    max-width:700px;
+  }
+
+  .mode-switch{
+    background:#e9edf3;
+    padding:4px;
+    border-radius:14px;
+    display:flex;
+    min-width:430px;
+  }
+
+  .mode-switch button{
+    flex:1;
+    border:0;
+    background:transparent;
+    padding:10px 14px;
+    border-radius:10px;
+    font-weight:700;
+    color:#475467;
+    cursor:pointer;
+  }
+
+  .mode-switch button.active{
+    background:var(--blue);
+    color:white;
+    box-shadow:0 3px 10px rgba(52,120,246,.22);
+  }
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:22px;
+    box-shadow:var(--shadow);
+    overflow:hidden;
+  }
+
+  .section{padding:24px}
+  .hidden{display:none!important}
+
+  .input-row{
+    display:flex;
+    gap:10px;
+    margin-top:18px;
+  }
+
+  input{
+    width:100%;
+    padding:13px 14px;
+    border:1px solid #cfd5df;
+    border-radius:12px;
+    outline:none;
+    font-size:16px;
+    background:white;
+  }
+
+  input:focus{
+    border-color:var(--blue);
+    box-shadow:0 0 0 3px rgba(52,120,246,.12);
+  }
+
+  .primary{
+    border:0;
+    background:var(--blue);
+    color:white;
+    font-weight:700;
+    padding:12px 18px;
+    border-radius:12px;
+    cursor:pointer;
+  }
+  .primary:hover{background:var(--blue2)}
+
+  .graph{
+    min-height:275px;
+    position:relative;
+    border-bottom:1px solid var(--line);
+    background:
+      radial-gradient(circle at center, rgba(52,120,246,.055) 0 1px, transparent 1px),
+      #fbfcfe;
+    background-size:16px 16px;
+  }
+
+  .ring{
+    position:absolute;
+    width:180px;
+    height:180px;
+    border:1px dashed #dbe2ec;
+    border-radius:50%;
+    left:50%;
+    top:50%;
+    transform:translate(-50%,-50%);
+  }
+
+  .node{
+    position:absolute;
+    width:50px;
+    height:50px;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#f1f4f8;
+    border:1px solid #d5dce7;
+    font-size:20px;
+    z-index:2;
+  }
+
+  .node.selected{
+    background:#eef4ff;
+    border:2px solid var(--blue);
+    color:var(--blue);
+    box-shadow:0 0 0 4px rgba(52,120,246,.10);
+    transform:scale(1.12);
+  }
+
+  .card.selected{
+    border:2px solid var(--blue);
+    background:#f7faff;
+    box-shadow:0 0 0 4px rgba(52,120,246,.08);
+  }
+
+  .node.center{
+    width:66px;height:66px;
+    left:50%;top:50%;
+    transform:translate(-50%,-50%);
+    background:var(--blue);
+    color:white;
+    border-color:#1f59c5;
+    font-size:24px;
+  }
+
+
+  /* Normal mode selected connector */
+  #normalMode .normal-link{
+    position:absolute;
+    height:3px;
+    background:#e52222;
+    transform-origin:0 50%;
+    z-index:1;
+    pointer-events:none;
+    border-radius:999px;
+  }
+
+  .line{
+    position:absolute;
+    height:1px;
+    background:#c7ced9;
+    transform-origin:left center;
+    z-index:1;
+  }
+
+  .stats{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    border-bottom:1px solid var(--line);
+  }
+
+  .stat{
+    padding:16px;
+    text-align:center;
+  }
+  .stat+.stat{border-left:1px solid var(--line)}
+  .stat small{
+    display:block;
+    color:var(--muted);
+    margin-bottom:4px;
+  }
+  .stat strong{font-size:15px}
+  .danger{color:var(--danger)}
+  .warning{color:var(--warn)}
+  .safe{color:var(--safe)}
+
+  .char-tabs,.family-tabs{
+    display:flex;
+    gap:4px;
+    background:#edf0f5;
+    padding:4px;
+    border-radius:14px;
+    margin-top:12px;
+  }
+
+  .char-tabs button,.family-tabs button{
+    flex:1;
+    border:0;
+    background:transparent;
+    padding:9px 8px;
+    border-radius:10px;
+    cursor:pointer;
+    color:#344054;
+  }
+
+  .char-tabs button.active,.family-tabs button.active{
+    background:var(--blue);
+    color:white;
+    font-weight:700;
+  }
+
+  .cards{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:12px;
+    margin-top:18px;
+  }
+
+  .card{
+    border:1px solid #dce2ea;
+    background:#fbfcfe;
+    border-radius:14px;
+    padding:15px;
+  }
+
+  .card-top{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+  }
+
+  .glyph-title{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+
+  .glyph-dot{
+    width:30px;height:30px;
+    border-radius:50%;
+    display:grid;
+    place-items:center;
+    background:var(--soft-blue);
+    color:var(--blue);
+    font-size:17px;
+  }
+
+  .badge{
+    font-size:11px;
+    border-radius:999px;
+    padding:4px 8px;
+    background:var(--soft-amber);
+    color:var(--warn);
+  }
+  .badge.critical{
+    background:var(--soft-red);
+    color:var(--danger);
+  }
+  .badge.identical{
+    background:#ecfdf3;
+    color:var(--safe);
+  }
+
+  .card p,.muted{
+    color:var(--muted);
+    line-height:1.5;
+  }
+
+  .card p{font-size:13px;margin:10px 0 0}
+  .card em{font-size:12px;color:#667085}
+
+  .example-title{
+    position:absolute;
+    top:15px;
+    left:18px;
+    font-size:13px;
+    font-weight:700;
+    z-index:3;
+  }
+
+  .domain-node{
+    position:absolute;
+    width:70px;
+    height:42px;
+    display:grid;
+    place-items:center;
+    border-radius:50%;
+    border:1.5px solid var(--danger);
+    background:#fff;
+    font-size:12px;
+    z-index:2;
+  }
+  .domain-node.center{
+    width:82px;height:52px;
+    border:2px solid var(--blue);
+    left:50%;top:50%;
+    transform:translate(-50%,-50%);
+    font-weight:700;
+  }
+  .domain-node.orange{border-color:#d97706}
+
+  .domain-node.selected{
+    border:2px solid var(--blue);
+    background:#eef4ff;
+    color:var(--blue);
+    box-shadow:0 0 0 5px rgba(52,120,246,.10);
+    transform:scale(1.08);
+  }
+
+  .example-box.selected{
+    border:2px solid var(--blue);
+    background:#f7faff;
+    box-shadow:0 0 0 4px rgba(52,120,246,.08);
+  }
+
+  .example-box{
+    margin-top:16px;
+    border:1px solid #dce2ea;
+    border-radius:14px;
+    padding:16px;
+    background:#fbfcfe;
+  }
+
+  .example-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    margin-bottom:12px;
+  }
+
+  .hex{
+    background:#eef1f5;
+    border-radius:6px;
+    padding:4px 7px;
+    color:#475467;
+    font-size:11px;
+  }
+
+  .compare{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+    margin-top:12px;
+  }
+
+  .compare > div{
+    background:#f3f5f8;
+    border-radius:10px;
+    padding:12px;
+  }
+
+  .compare small{color:var(--muted);display:block;margin-bottom:6px}
+  code{font-family:"SFMono-Regular",Consolas,monospace}
+
+  .notice{
+    margin-top:18px;
+    padding:13px 14px;
+    background:#fff7ed;
+    border:1px solid #fed7aa;
+    border-radius:12px;
+    color:#9a3412;
+    font-size:13px;
+    line-height:1.5;
+  }
+
+
+  /* Example mode interaction — mirrors the reference screenshots */
+  #exampleMode .graph{
+    min-height:305px;
+    overflow:hidden;
+  }
+
+  #exampleMode .example-title{
+    font-size:12px;
+    color:#111827;
+    font-weight:700;
+  }
+
+  #exampleMode .domain-node{
+    width:58px;
+    height:58px;
+    padding:0;
+    border-radius:50%;
+    font-size:11px;
+    line-height:1.05;
+    white-space:nowrap;
+    transition:.18s ease;
+    user-select:none;
+  }
+
+  #exampleMode .domain-node.center{
+    width:58px;
+    height:58px;
+    border:1px solid #d6dbe4;
+    background:#eef1f5;
+    color:#111;
+    font-weight:600;
+    z-index:4;
+
+    /* Lock Original to the exact center of the dotted circle */
+    left:50% !important;
+    top:50% !important;
+    transform:translate(-50%,-50%) !important;
+  }
+
+  #exampleMode .domain-node.base-selected{
+    border:2px solid var(--blue);
+    background:#f7faff;
+    box-shadow:none;
+  }
+
+  #exampleMode .domain-node.selected{
+    border:2px solid var(--blue)!important;
+    background:#f7faff;
+    color:#111;
+    box-shadow:
+      0 0 0 5px #f7faff,
+      0 0 0 6px #73a4ff;
+    z-index:6;
+  }
+
+  #exampleMode .domain-node.center.selected{
+    left:50% !important;
+    top:50% !important;
+    transform:translate(-50%,-50%) !important;
+  }
+
+  #exampleMode .domain-node.risk-red{
+    border-color:#ef4444;
+  }
+
+  #exampleMode .domain-node.risk-orange{
+    border-color:#c77700;
+  }
+
+  #exampleMode .example-link{
+    position:absolute;
+    height:1px;
+    background:#9aa3af;
+    transform-origin:0 50%;
+    z-index:2;
+    transition:background .18s ease, height .18s ease;
+    pointer-events:none;
+  }
+
+  #exampleMode .example-link.selected{
+    height:2px;
+    background:var(--blue);
+    z-index:3;
+  }
+
+  #exampleMode .stats strong{
+    font-size:14px;
+  }
+
+  #exampleMode .family-tabs{
+    margin-top:9px;
+  }
+
+  #exampleMode .family-tabs button{
+    padding:8px 7px;
+    font-size:13px;
+  }
+
+  #exampleMode #exampleContent{
+    margin-top:13px;
+  }
+
+  #exampleMode .example-box{
+    margin-top:0;
+    cursor:default!important;
+    transition:none;
+  }
+
+  #exampleMode .example-box.selected{
+    border:1px solid #dce2ea;
+    background:#fbfcfe;
+    box-shadow:none;
+  }
+
+  #exampleMode .example-head{
+    margin-bottom:13px;
+  }
+
+  #exampleMode .example-head strong{
+    font-size:14px;
+  }
+
+  #exampleMode .compare strong{
+    font-size:13px;
+  }
+
+  #exampleMode .example-description{
+    margin:13px 0 0;
+    color:#475467;
+    line-height:1.55;
+    font-size:13px;
+  }
+
+
+  /* =========================================================
+     TRY IT YOURSELF — Domain Transformation Engine
+     ========================================================= */
+  #tryMode .transform-stage{
+    position:relative;
+    min-height:260px;
+    padding:20px 46px 12px;
+    border-bottom:1px solid var(--line);
+    background:
+      radial-gradient(circle at center, rgba(52,120,246,.05) 0 1px, transparent 1px),
+      #fbfcfe;
+    background-size:16px 16px;
+  }
+
+  #tryMode .engine-title{
+    font-size:13px;
+    font-weight:600;
+    color:#344054;
+    margin-bottom:24px;
+  }
+
+  #tryMode .transform-row{
+    display:grid;
+    grid-template-columns:1fr 72px 1fr;
+    align-items:center;
+    gap:24px;
+    max-width:760px;
+    margin:0 auto;
+  }
+
+  #tryMode .domain-preview-card{
+    min-height:118px;
+    border:2px solid #079455;
+    border-radius:14px;
+    background:rgba(255,255,255,.84);
+    padding:14px 18px 12px;
+    transition:border-color .18s ease, box-shadow .18s ease;
+  }
+
+  #tryMode .domain-preview-card.spoof{
+    border-color:#d92d48;
+  }
+
+  #tryMode .domain-preview-card.clean{
+    border-color:#079455;
+  }
+
+  #tryMode .preview-label{
+    font-size:12px;
+    font-weight:600;
+    color:#067647;
+    margin-bottom:12px;
+  }
+
+  #tryMode .domain-preview-card.spoof .preview-label{
+    color:#c01048;
+  }
+
+  #tryMode .preview-domain{
+    font-size:25px;
+    line-height:1.1;
+    font-weight:500;
+    min-height:31px;
+    overflow-wrap:anywhere;
+  }
+
+  #tryMode .preview-sub{
+    margin-top:7px;
+    font-size:11px;
+    color:#667085;
+  }
+
+  #tryMode .preview-puny{
+    margin-top:4px;
+    font-size:11px;
+    color:#246bfd;
+    font-family:"SFMono-Regular",Consolas,monospace;
+    overflow-wrap:anywhere;
+  }
+
+  #tryMode .swap-mark{
+    width:46px;
+    height:46px;
+    margin:auto;
+    display:grid;
+    place-items:center;
+    border-radius:50%;
+    background:#f2f4f7;
+    color:#344054;
+    font-size:20px;
+    font-weight:700;
+  }
+
+  #tryMode .try-stats{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    border-bottom:1px solid var(--line);
+  }
+
+  #tryMode .try-stat{
+    padding:15px 12px;
+    text-align:center;
+  }
+
+  #tryMode .try-stat + .try-stat{
+    border-left:1px solid var(--line);
+  }
+
+  #tryMode .try-stat small{
+    display:block;
+    color:#667085;
+    margin-bottom:3px;
+    font-size:11px;
+  }
+
+  #tryMode .try-stat strong{
+    font-size:14px;
+  }
+
+  #tryMode .try-risk-safe{color:#079455}
+  #tryMode .try-risk-high{color:#d92d48}
+
+  #tryMode .try-body{
+    padding:20px 24px 24px;
+  }
+
+  #tryMode .try-label{
+    display:block;
+    font-size:13px;
+    color:#344054;
+    margin-bottom:7px;
+  }
+
+  #tryMode .try-domain-input{
+    width:100%;
+    height:45px;
+    padding:10px 13px;
+    border:1.5px solid #3478f6;
+    border-radius:9px;
+    background:#f8f9fb;
+    font-size:15px;
+  }
+
+  #tryMode .try-domain-input:focus{
+    background:white;
+  }
+
+  #tryMode .script-filter{
+    margin-top:16px;
+  }
+
+  #tryMode .try-tabs{
+    display:flex;
+    background:#e9edf3;
+    padding:3px;
+    border-radius:14px;
+  }
+
+  #tryMode .try-tabs button{
+    flex:1;
+    border:0;
+    background:transparent;
+    border-radius:11px;
+    padding:8px 10px;
+    color:#344054;
+    cursor:pointer;
+    font-size:13px;
+  }
+
+  #tryMode .try-tabs button.active{
+    color:white;
+    background:#3478f6;
+    font-weight:700;
+  }
+
+  #tryMode .matrix-heading{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-top:15px;
+    margin-bottom:7px;
+  }
+
+  #tryMode .matrix-heading strong{
+    font-size:13px;
+    color:#344054;
+    font-weight:500;
+  }
+
+  #tryMode .export-try{
+    padding:7px 12px;
+    border-radius:10px;
+    font-size:11px;
+  }
+
+  #tryMode .matrix-wrap{
+    position:relative;
+    border:1px solid #dce2ea;
+    border-radius:10px;
+    background:#f7f8fa;
+    height:190px;
+    overflow-y:auto;
+    overflow-x:hidden;
+    scrollbar-width:thin;
+  }
+
+  #tryMode .variant-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:4px 8px;
+    padding:7px;
+  }
+
+  #tryMode .variant-item{
+    min-height:54px;
+    border:0;
+    border-radius:5px;
+    background:#f1f3f6;
+    padding:8px 11px;
+    text-align:left;
+    cursor:pointer;
+    color:#101828;
+    overflow:hidden;
+  }
+
+  #tryMode .variant-item:hover{
+    background:#e9eef7;
+  }
+
+  #tryMode .variant-item.active{
+    background:#3b73ed;
+    color:white;
+  }
+
+  #tryMode .variant-domain{
+    display:block;
+    font-size:13px;
+    line-height:1.2;
+    font-weight:500;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  #tryMode .variant-puny{
+    display:block;
+    margin-top:5px;
+    font-size:10px;
+    line-height:1.15;
+    color:#667085;
+    font-family:"SFMono-Regular",Consolas,monospace;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  #tryMode .variant-item.active .variant-puny{
+    color:#eaf0ff;
+  }
+
+  #tryMode .empty-matrix{
+    grid-column:1/-1;
+    padding:52px 18px;
+    text-align:center;
+    color:#98a2b3;
+    font-size:13px;
+  }
+
+  #tryMode .changed-char{
+    text-decoration:underline;
+    text-decoration-thickness:2px;
+    text-underline-offset:3px;
+  }
+
+
+  .edu-shell{width:min(1120px,calc(100% - 32px));margin:0 auto}
+  .edu-header{
+    background:var(--navy);
+    color:#fff;
+    border-bottom:4px solid #9cc3e6;
+    position:sticky;
+    top:0;
+    z-index:50;
+  }
+  .edu-nav{
+    min-height:72px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:20px;
+  }
+  .edu-brand{display:flex;align-items:center;gap:12px;font-weight:700;color:#fff;text-decoration:none}
+  .edu-brand-mark{
+    width:38px;height:38px;border-radius:8px;
+    background:#fff;color:var(--navy);
+    display:grid;place-items:center;font-weight:800;
+  }
+  .edu-links{display:flex;gap:22px;font-size:14px;color:#d9e8f5}
+  .edu-links a{color:#d9e8f5;text-decoration:none}
+  .edu-links a:hover{color:#fff}
+  .edu-actions{display:flex;gap:10px}
+  .edu-btn{
+    border-radius:8px;padding:10px 16px;font-weight:700;
+    display:inline-flex;align-items:center;justify-content:center;
+    text-decoration:none;
+  }
+  .edu-btn-light{background:transparent;color:#fff;border:1px solid #7fa5c5}
+
+  .edu-footer{
+    background:#10263a;
+    color:#b9c8d5;
+    padding:32px 0 40px;
+    margin-top:48px;
+    font-size:13px;
+  }
+  .edu-footer-row{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
+  .edu-footer-links{display:flex;gap:18px;flex-wrap:wrap}
+  .edu-footer a{color:#b9c8d5;text-decoration:none}
+
+  .app{
+    width:min(1040px,calc(100% - 32px));
+    margin:42px auto 50px;
+  }
+
+  .hero{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:22px;
+    margin-bottom:22px;
+  }
+
+  .hero h1{
+    margin:0;
+    color:var(--navy);
+    font-family:Georgia,"Times New Roman",serif;
+    font-size:32px;
+    letter-spacing:-.02em;
+  }
+
+  .hero p{
+    margin:7px 0 0;
+    color:var(--muted);
+    line-height:1.6;
+    max-width:700px;
+  }
+
+  .mode-switch{
+    background:#e7edf4;
+    padding:4px;
+    border-radius:10px;
+    display:flex;
+    min-width:430px;
+    border:1px solid #d5dee8;
+  }
+
+  .mode-switch button{
+    border-radius:8px;
+  }
+
+  .mode-switch button.active{
+    background:var(--navy);
+    color:white;
+    box-shadow:none;
+  }
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:14px;
+    box-shadow:var(--shadow);
+    overflow:hidden;
+  }
+
+  .section{padding:22px}
+
+  button.primary{
+    background:var(--navy);
+    border-radius:8px;
+  }
+  button.primary:hover{background:var(--navy-2)}
+
+  input{
+    border-radius:8px;
+    border-color:#cfd8e3;
+  }
+  input:focus{
+    border-color:var(--blue);
+    box-shadow:0 0 0 3px rgba(47,111,178,.12);
+  }
+
+  .char-tabs,.family-tabs,#tryMode .try-tabs{
+    border-radius:10px;
+    background:#e9eef4;
+  }
+
+  .char-tabs button,.family-tabs button,#tryMode .try-tabs button{
+    border-radius:8px;
+  }
+
+  .char-tabs button.active,.family-tabs button.active,#tryMode .try-tabs button.active{
+    background:var(--navy);
+    color:#fff;
+  }
+
+  .card,.example-box,#tryMode .domain-preview-card,#tryMode .matrix-wrap{
+    border-radius:10px;
+  }
+
+  .card.selected{
+    border:2px solid var(--blue);
+    background:#f7fbff;
+    box-shadow:0 0 0 3px rgba(47,111,178,.08);
+  }
+
+  .notice{
+    border-radius:10px;
+    background:var(--amber-soft);
+    border-color:#ecd5ac;
+    color:#7f541a;
+  }
+
+  .graph,#tryMode .transform-stage{
+    background:#fff;
+  }
+
+  #tryMode .engine-title,
+  #exampleMode .example-title{
+    color:var(--navy);
+    font-weight:700;
+  }
+
+  #tryMode .try-domain-input{
+    border-color:var(--blue);
+    border-radius:8px;
+    background:#fff;
+  }
+
+  #tryMode .variant-item.active{
+    background:var(--navy);
+  }
+
+  @media(max-width:900px){
+    .edu-links{display:none}
+  }
+  @media(max-width:760px){
+    .edu-shell{width:min(100% - 20px,1120px)}
+    .edu-actions{display:none}
+    .hero{flex-direction:column}
+    .mode-switch{min-width:0;width:100%}
+  }
+
+  @media(max-width:760px){
+    .mode-switch{min-width:0; width:100%}
+    .mode-switch button{padding:9px 8px;font-size:12px}
+    #tryMode .transform-stage{padding:18px 18px 10px}
+    #tryMode .transform-row{
+      grid-template-columns:1fr;
+      gap:10px;
+    }
+    #tryMode .swap-mark{
+      transform:rotate(90deg);
+      width:38px;height:38px;
+    }
+    #tryMode .variant-grid{grid-template-columns:1fr}
+    #tryMode .try-stats{grid-template-columns:1fr}
+    #tryMode .try-stat + .try-stat{border-left:0;border-top:1px solid var(--line)}
+  }
+
+  @media(max-width:760px){
+    .hero{flex-direction:column}
+    .mode-switch{width:100%}
+    .cards,.compare{grid-template-columns:1fr}
+    .stats{grid-template-columns:1fr}
+    .stat+.stat{border-left:0;border-top:1px solid var(--line)}
+    .input-row{flex-direction:column}
+  }
+</style>
+</head>
+<body>
+
+<header class="edu-header">
+  <div class="edu-shell edu-nav">
+    <a class="edu-brand" href="index.html">
+      <span class="edu-brand-mark">ID</span>
+      <span>IDN Homograph Explorer</span>
+    </a>
+    <nav class="edu-links">
+      <a href="index.html#learn">Learn</a>
+      <a href="index.html#how">How It Works</a>
+      <a href="index.html#protection">Protection</a>
+      <a href="index.html#references">References</a>
+    </nav>
+    <div class="edu-actions">
+      <a class="edu-btn edu-btn-light" href="index.html">Back to Lessons</a>
+    </div>
+  </div>
+</header>
+
+<div class="app">
+
+  <div style="margin-bottom:14px;font-size:12px;color:#667085">
+    <a href="index.html" style="color:#2f6fb2;text-decoration:none;font-weight:700">Home</a>
+    &nbsp;›&nbsp; Interactive Lab
+  </div>
+  <div class="hero">
+    <div>
+      <h1>Interactive IDN Homograph Lab</h1>
+      <p>Practice identifying Unicode lookalike characters, inspect prepared examples, and experiment with IDN transformations in a guided educational lab.</p>
+    </div>
+    <div class="mode-switch">
+      <button id="normalBtn" class="active" onclick="setMode('normal')">Normal Mode</button>
+      <button id="exampleBtn" onclick="setMode('example')">Example Mode</button>
+      <button id="tryBtn" onclick="setMode('try')">Try It Yourself</button>
+    </div>
+  </div>
+
+  <!-- NORMAL MODE -->
+  <div id="normalMode" class="panel">
+    <div class="graph" id="normalGraph">
+      <div class="ring"></div>
+      <div id="normalLinkLayer"></div>
+      <div class="node center" id="centerGlyph">a</div>
+      <div id="normalNodes"></div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><small>Lookalikes</small><strong id="lookCount">4 Found</strong></div>
+      <div class="stat"><small>Base Script</small><strong>Latin</strong></div>
+      <div class="stat"><small>Risk Profile</small><strong class="warning">Spoof Able</strong></div>
+    </div>
+
+    <div class="section">
+      <strong>Select Character Blueprint</strong>
+      <div class="char-tabs" id="charTabs"></div>
+      <div class="cards" id="cards"></div>
+
+      <div class="input-row">
+        <input id="singleChar" maxlength="1" placeholder="Or type a Latin character, e.g. a, e, o, p" />
+        <button class="primary" onclick="analyzeTypedChar()">Analyze</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- EXAMPLE MODE -->
+  <div id="exampleMode" class="panel hidden">
+    <div class="graph" id="exampleGraph">
+      <div class="example-title" id="exampleTitle">Cyrillic (U+0400–U+04FF)</div>
+      <div class="ring"></div>
+      <div id="exampleLinks"></div>
+      <div id="exampleNodes"></div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><small>Risk vector</small><strong id="exampleRisk">Critical risk</strong></div>
+      <div class="stat"><small>Similarity index</small><strong id="exampleSimilarity">100%</strong></div>
+      <div class="stat"><small>Blueprint score</small><strong id="exampleScore">9.8</strong></div>
+    </div>
+
+    <div class="section">
+      <strong>Character blueprint script family</strong>
+      <div class="family-tabs">
+        <button id="family-cyr" class="active" onclick="showFamily(this,'cyr')">Cyrillic swap</button>
+        <button id="family-greek" onclick="showFamily(this,'greek')">Greek lookalike</button>
+        <button id="family-latin" onclick="showFamily(this,'latin')">Latin extension</button>
+      </div>
+
+      <div id="exampleContent"></div>
+
+      <div class="notice">
+        Educational demo only: the examples illustrate how Unicode characters can visually imitate Latin letters. Do not use deceptive domains for phishing or impersonation.
+      </div>
+    </div>
+  </div>
+
+  <!-- TRY IT YOURSELF MODE -->
+  <div id="tryMode" class="panel hidden">
+    <div class="transform-stage">
+      <div class="engine-title">Domain Transformation Engine</div>
+
+      <div class="transform-row">
+        <div class="domain-preview-card clean">
+          <div class="preview-label">✓ Genuine Reference (ASCII)</div>
+          <div class="preview-domain" id="tryOriginalPreview">paypal</div>
+          <div class="preview-sub">Standard Latin Script</div>
+        </div>
+
+        <div class="swap-mark">⇄</div>
+
+        <div class="domain-preview-card clean" id="trySpoofCard">
+          <div class="preview-label" id="trySpoofLabel">✓ Clean State</div>
+          <div class="preview-domain" id="trySpoofPreview">paypal</div>
+          <div class="preview-puny" id="tryPunyPreview">paypal</div>
+          <div class="preview-sub">DNS Punycode Representation</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="try-stats">
+      <div class="try-stat">
+        <small>Total Combos</small>
+        <strong id="tryTotalCombos">0</strong>
+      </div>
+      <div class="try-stat">
+        <small>Active Variant</small>
+        <strong id="tryActiveVariant">#1</strong>
+      </div>
+      <div class="try-stat">
+        <small>Risk Status</small>
+        <strong id="tryRiskStatus" class="try-risk-safe">Safe</strong>
+      </div>
+    </div>
+
+    <div class="try-body">
+      <label class="try-label" for="tryDomainInput">Target Word / Domain Name</label>
+      <input
+        id="tryDomainInput"
+        class="try-domain-input"
+        type="text"
+        value="paypal"
+        autocomplete="off"
+        spellcheck="false"
+        placeholder="e.g. paypal"
+        oninput="refreshTryVariants()"
+      />
+
+      <div class="script-filter">
+        <span class="try-label">Lookalike Script Filter</span>
+        <div class="try-tabs">
+          <button id="tryFilter-all" class="active" onclick="setTryFilter('all',this)">All Scripts</button>
+          <button id="tryFilter-cyrillic" onclick="setTryFilter('cyrillic',this)">Cyrillic</button>
+          <button id="tryFilter-greek" onclick="setTryFilter('greek',this)">Greek</button>
+        </div>
+      </div>
+
+      <div class="matrix-heading">
+        <strong>Generated Homoglyphs Matrix</strong>
+        <button class="primary export-try" onclick="exportTryVariants()">⇩ Export List</button>
+      </div>
+
+      <div class="matrix-wrap">
+        <div class="variant-grid" id="tryVariantGrid"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script>
+const db = {
+  a:[
+    {char:'а',code:'U+0430',name:'Cyrillic',langs:'Russian, Ukrainian, Bulgarian',risk:'Identical',note:'Perfect visual crossover match'},
+    {char:'ａ',code:'U+FF41',name:'Fullwidth Latin',langs:'Japanese / fullwidth context',risk:'High',note:'Slightly wider aspect spacing'},
+    {char:'ɑ',code:'U+0251',name:'Latin (IPA)',langs:'International Phonetic Alphabet',risk:'Medium',note:'Single-story alpha variant'},
+    {char:'𝚊',code:'U+1D68A',name:'Mathematical Sans',langs:'Scientific notation',risk:'High',note:'Stylized monospaced geometry'}
+  ],
+  c:[
+    {char:'с',code:'U+0441',name:'Cyrillic',langs:'Russian, Serbian, Macedonian',risk:'Identical',note:'Very close visual match'},
+    {char:'ϲ',code:'U+03F2',name:'Greek Lunate Sigma',langs:'Greek',risk:'High',note:'Can resemble lowercase Latin c'},
+    {char:'ｃ',code:'U+FF43',name:'Fullwidth Latin',langs:'East Asian systems',risk:'Medium',note:'Wider visual form'}
+  ],
+  e:[
+    {char:'е',code:'U+0435',name:'Cyrillic',langs:'Russian, Belarusian, Kazakh',risk:'Identical',note:'Very close visual match'},
+    {char:'ｅ',code:'U+FF45',name:'Fullwidth Latin',langs:'East Asian systems',risk:'Medium',note:'Width variation'},
+    {char:'ϵ',code:'U+03F5',name:'Greek Epsilon',langs:'Greek',risk:'High',note:'Context-dependent similarity'}
+  ],
+  o:[
+    {char:'о',code:'U+043E',name:'Cyrillic',langs:'Russian, Bulgarian, Rusyn',risk:'Identical',note:'Common IDN homograph swap'},
+    {char:'ο',code:'U+03BF',name:'Greek Omicron',langs:'Greek',risk:'Identical',note:'Strong circular lookalike'},
+    {char:'ｏ',code:'U+FF4F',name:'Fullwidth Latin',langs:'East Asian systems',risk:'Medium',note:'Wider visual form'},
+    {char:'օ',code:'U+0585',name:'Armenian',langs:'Armenian',risk:'High',note:'Circular visual similarity'}
+  ],
+  p:[
+    {char:'р',code:'U+0440',name:'Cyrillic',langs:'Russian, Ukrainian',risk:'Identical',note:'Strong Latin p lookalike'},
+    {char:'ρ',code:'U+03C1',name:'Greek Rho',langs:'Greek',risk:'High',note:'Shape is very similar'},
+    {char:'ｐ',code:'U+FF50',name:'Fullwidth Latin',langs:'East Asian systems',risk:'Medium',note:'Width variation'}
+  ],
+  H:[
+    {char:'Н',code:'U+041D',name:'Cyrillic',langs:'Russian and other Cyrillic scripts',risk:'Identical',note:'Uppercase visual match'},
+    {char:'Η',code:'U+0397',name:'Greek Eta',langs:'Greek',risk:'Identical',note:'Uppercase visual match'}
+  ],
+  B:[
+    {char:'В',code:'U+0412',name:'Cyrillic',langs:'Russian and other Cyrillic scripts',risk:'High',note:'Close uppercase visual form'},
+    {char:'Β',code:'U+0392',name:'Greek Beta',langs:'Greek',risk:'High',note:'Close uppercase visual form'}
+  ]
+};
+
+const tabOrder = ['a','c','e','o','p','H','B'];
+let current = 'a';
+
+function badgeClass(risk){
+  if(risk==='Identical') return 'identical';
+  if(risk==='High') return 'critical';
+  return '';
+}
+
+function renderNormal(ch){
+  current = ch;
+  const items = db[ch] || [];
+  document.getElementById('centerGlyph').textContent = ch;
+  document.getElementById('lookCount').textContent = items.length + ' Found';
+
+  document.querySelectorAll('#charTabs button').forEach(b=>{
+    b.classList.toggle('active', b.dataset.char===ch);
+  });
+
+  const cards = document.getElementById('cards');
+  cards.innerHTML = items.map((i,idx)=>`
+    <div class="card" id="card-${idx}" onclick="selectLookalike(${idx})" style="cursor:pointer">
+      <div class="card-top">
+        <div class="glyph-title">
+          <span class="glyph-dot">${i.char}</span>
+          <div><strong>${i.name}</strong><br><small>${i.code}</small></div>
+        </div>
+        <span class="badge ${badgeClass(i.risk)}">${i.risk}</span>
+      </div>
+      <p><strong>Languages:</strong><br>${i.langs}</p>
+      <p><em>${i.note}</em></p>
+    </div>
+  `).join('');
+
+  const normalNodes = document.getElementById('normalNodes');
+  const positions = [
+    [34,30],[66,30],[34,70],[66,70]
+  ];
+  normalNodes.innerHTML = items.slice(0,4).map((i,idx)=>{
+    const [x,y] = positions[idx];
+    return `<div class="node" id="node-${idx}" onclick="selectLookalike(${idx})"
+      style="left:calc(${x}% - 25px);top:calc(${y}% - 25px);cursor:pointer"
+      title="${i.name} ${i.code}">${i.char}</div>`;
+  }).join('');
+
+  if(items.length) selectLookalike(0);
+}
+
+function updateNormalLink(idx){
+  const graph = document.getElementById('normalGraph');
+  const center = document.getElementById('centerGlyph');
+  const target = document.getElementById('node-' + idx);
+  const layer = document.getElementById('normalLinkLayer');
+
+  if(!graph || !center || !target || !layer) return;
+
+  const gr = graph.getBoundingClientRect();
+  const cr = center.getBoundingClientRect();
+  const tr = target.getBoundingClientRect();
+
+  const cx = cr.left - gr.left + cr.width / 2;
+  const cy = cr.top  - gr.top  + cr.height / 2;
+  const tx = tr.left - gr.left + tr.width / 2;
+  const ty = tr.top  - gr.top  + tr.height / 2;
+
+  const dx = tx - cx;
+  const dy = ty - cy;
+  const dist = Math.hypot(dx,dy);
+  if(!dist) return;
+
+  const ux = dx / dist;
+  const uy = dy / dist;
+
+  const cRadius = cr.width / 2;
+  const tRadius = tr.width / 2;
+
+  const sx = cx + ux * cRadius;
+  const sy = cy + uy * cRadius;
+  const ex = tx - ux * tRadius;
+  const ey = ty - uy * tRadius;
+
+  const ldx = ex - sx;
+  const ldy = ey - sy;
+  const len = Math.hypot(ldx,ldy);
+  const angle = Math.atan2(ldy,ldx) * 180 / Math.PI;
+
+  layer.innerHTML = `<div class="normal-link"
+    style="left:${sx}px;top:${sy}px;width:${len}px;transform:rotate(${angle}deg)"></div>`;
+}
+
+function selectLookalike(idx){
+  document.querySelectorAll('#normalNodes .node').forEach(n=>n.classList.remove('selected'));
+  document.querySelectorAll('#cards .card').forEach(c=>c.classList.remove('selected'));
+
+  const node=document.getElementById('node-'+idx);
+  const card=document.getElementById('card-'+idx);
+
+  if(node) node.classList.add('selected');
+  if(card){
+    card.classList.add('selected');
+    if(window.innerWidth < 760) card.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }
+
+  requestAnimationFrame(()=>updateNormalLink(idx));
+}
+
+function buildTabs(){
+  const wrap = document.getElementById('charTabs');
+  wrap.innerHTML = tabOrder.map(ch=>
+    `<button data-char="${ch}" onclick="renderNormal('${ch}')">${ch}</button>`
+  ).join('');
+}
+
+function analyzeTypedChar(){
+  const v = document.getElementById('singleChar').value;
+  if(db[v]) renderNormal(v);
+  else alert('Demo database currently supports: a, c, e, o, p, H, B');
+}
+
+function setMode(mode){
+  const normal = mode==='normal';
+  const example = mode==='example';
+  const tryIt = mode==='try';
+
+  document.getElementById('normalMode').classList.toggle('hidden',!normal);
+  document.getElementById('exampleMode').classList.toggle('hidden',!example);
+  document.getElementById('tryMode').classList.toggle('hidden',!tryIt);
+
+  document.getElementById('normalBtn').classList.toggle('active',normal);
+  document.getElementById('exampleBtn').classList.toggle('active',example);
+  document.getElementById('tryBtn').classList.toggle('active',tryIt);
+
+  if(example){
+    document.querySelectorAll('#exampleMode .family-tabs button').forEach(b=>b.classList.remove('active'));
+    const first=document.getElementById('family-cyr');
+    if(first) first.classList.add('active');
+    showExample('cyr');
+  }
+
+  if(tryIt){
+    refreshTryVariants();
+  }
+}
+
+function showFamily(btn,family){
+  document.querySelectorAll('.family-tabs button').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  showExample(family);
+}
+
+const exampleSets = {
+  cyr: {
+    title:'Cyrillic (U+0400–U+04FF)',
+    target:'google.com',
+    risk:'Critical risk',
+    score:'9.8',
+    layout:'cross',
+    nodes:[
+      {
+        title:'Original',
+        domain:'google.com',
+        display:'google.com',
+        hex:'U+0067',
+        puny:'google.com',
+        similarity:100,
+        border:'red',
+        description:'Legitimate target domain. Blueprinters use Unicode glyph substitutions to map visually high-fidelity domains that satisfy structural lookalike properties, misleading automated or human review agents.'
+      },
+      {
+        title:'Full Cyrillic Clone',
+        domain:'Ԍoogle.com',
+        display:'Ԍoogle.com',
+        hex:'U+050D',
+        puny:'xn--e1a06baa55k.com',
+        similarity:92,
+        border:'orange',
+        description:'Entire domain prefix constructed from lookalike Cyrillic glyphs. Blueprinters use these Unicode glyph substitutions to map visually high-fidelity domains that satisfy structural lookalike properties, misleading automated or human review agents.'
+      },
+      {
+        title:'Cyrillic Small G Swap',
+        domain:'ɡoogle.com',
+        display:'ɡoogle.com',
+        hex:'U+0261',
+        puny:'xn--oogle-wqa.com',
+        similarity:95,
+        border:'red',
+        description:'Uses Cyrillic Small Letter G (U+0261) or lookalike script. Blueprinters use these Unicode glyph substitutions to map visually high-fidelity domains that satisfy structural lookalike properties, misleading automated or human review agents.'
+      },
+      {
+        title:'Cyrillic Small O Swap',
+        domain:'gоogle.com',
+        display:'gоogle.com',
+        hex:'U+043E',
+        puny:'xn--ggle-p50aa.com',
+        similarity:98,
+        border:'red',
+        description:'Uses Cyrillic Small Letter O (U+043E) visually identical to Latin o. Blueprinters use these Unicode glyph substitutions to map visually high-fidelity domains that satisfy structural lookalike properties, misleading automated or human review agents.'
+      },
+      {
+        title:'Cyrillic Small E Swap',
+        domain:'googlе.com',
+        display:'googlе.com',
+        hex:'U+0435',
+        puny:'xn--googl-ela.com',
+        similarity:97,
+        border:'red',
+        description:'Uses Cyrillic Small Letter IE (U+0435) visually mapping to Latin e. Blueprinters use these Unicode glyph substitutions to map visually high-fidelity domains that satisfy structural lookalike properties, misleading automated or human review agents.'
+      }
+    ]
+  },
+
+  greek: {
+    title:'Greek (U+0370–U+03FF)',
+    target:'apple.com',
+    risk:'High risk',
+    score:'8.4',
+    layout:'triangle',
+    nodes:[
+      {
+        title:'Original',
+        domain:'apple.com',
+        display:'apple.com',
+        hex:'U+0061',
+        puny:'apple.com',
+        similarity:100,
+        border:'red',
+        description:'Legitimate target domain. Blueprinters use these Unicode glyph substitutions to map visually high-fidelity domains that satisfy structural lookalike properties, misleading automated or human review agents.'
+      },
+      {
+        title:'Greek Small Epsilon Swap',
+        domain:'applε.com',
+        display:'applε.com',
+        hex:'U+03B5',
+        puny:'xn--appl-ela.com',
+        similarity:96,
+        border:'orange',
+        description:'Uses Greek/Cyrillic Epsilon character variant. Blueprinters use these Unicode glyph substitutions to map visually high-fidelity domains that satisfy structural lookalike properties, misleading automated or human review agents.'
+      },
+      {
+        title:'Greek Small Rho Swap',
+        domain:'aρple.com',
+        display:'aρple.com',
+        hex:'U+03C1',
+        puny:'xn--aple-43d.com',
+        similarity:94,
+        border:'orange',
+        description:'Uses Greek Small Letter Rho (U+03C1) resembling Latin p. Blueprinters use these Unicode glyph substitutions to map visually high-fidelity domains that satisfy structural lookalike properties, misleading automated or human review agents.'
+      },
+      {
+        title:'Greek Small Alpha Swap',
+        domain:'αpple.com',
+        display:'αpple.com',
+        hex:'U+0430',
+        puny:'xn--pple-43d.com',
+        similarity:99,
+        border:'red',
+        description:'Uses Greek/Cyrillic lookalike Alpha (U+0430) identical to Latin a. Blueprinters use these Unicode glyph substitutions to map visually high-fidelity domains that satisfy structural lookalike properties, misleading automated or human review agents.'
+      }
+    ]
+  },
+
+  latin: {
+    title:'Latin Extended (U+0100)',
+    target:'paypal.com',
+    risk:'Medium risk',
+    score:'6.2',
+    layout:'vertical',
+    nodes:[
+      {
+        title:'Original',
+        domain:'paypal.com',
+        display:'paypal.com',
+        hex:'U+0070',
+        puny:'paypal.com',
+        similarity:100,
+        border:'orange',
+        description:'Legitimate target domain. Blueprinters use these Unicode glyph substitutions to map visually high-fidelity domains that satisfy structural lookalike properties, misleading automated or human review agents.'
+      },
+      {
+        title:'Latin Small A With Dot',
+        domain:'paypạl.com',
+        display:'paypạl.com',
+        hex:'U+1EA1',
+        puny:'xn--paypl-m0a.com',
+        similarity:89,
+        border:'orange',
+        description:'Uses Latin Small Letter A with dot below for deceptive rendering. Blueprinters use these Unicode glyph substitutions to map visually high-fidelity domains that satisfy structural lookalike properties, misleading automated or human review agents.'
+      },
+      {
+        title:'Latin Small Dotless I',
+        domain:'paypaı.com',
+        display:'paypaı.com',
+        hex:'U+0131',
+        puny:'xn--paypa-08e.com',
+        similarity:91,
+        border:'orange',
+        description:'Replaces a standard Latin character with a dotless variant or related lookalike. Blueprinters use these Unicode glyph substitutions to map visually high-fidelity domains that satisfy structural lookalike properties, misleading automated or human review agents.'
+      }
+    ]
+  }
+};
+
+let activeExampleFamily = 'cyr';
+let selectedExampleIndex = 0;
+
+function showFamily(btn,family){
+  document.querySelectorAll('#exampleMode .family-tabs button').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  showExample(family);
+}
+
+function examplePositions(layout){
+  if(layout === 'cross'){
+    return [
+      {x:50,y:50,center:true},
+      {x:32,y:50},
+      {x:68,y:50},
+      {x:50,y:18},
+      {x:50,y:82}
+    ];
+  }
+  if(layout === 'triangle'){
+    return [
+      {x:50,y:48,center:true},
+      {x:32,y:68},
+      {x:68,y:68},
+      {x:50,y:17}
+    ];
+  }
+  return [
+    {x:50,y:50,center:true},
+    {x:50,y:17},
+    {x:50,y:82}
+  ];
+}
+
+function showExample(family){
+  activeExampleFamily = family;
+  selectedExampleIndex = 0;
+
+  const set = exampleSets[family];
+  document.getElementById('exampleTitle').textContent = set.title;
+  document.getElementById('exampleRisk').textContent = set.risk;
+  document.getElementById('exampleScore').textContent = set.score;
+
+  const positions = examplePositions(set.layout);
+  const nodes = document.getElementById('exampleNodes');
+
+  nodes.innerHTML = set.nodes.map((item,idx)=>{
+    const pos = positions[idx];
+    const classes = [
+      'domain-node',
+      pos.center ? 'center base-selected' : '',
+      item.border === 'red' ? 'risk-red' : 'risk-orange'
+    ].join(' ');
+
+    const inlinePos = pos.center
+      ? `cursor:pointer;`
+      : `left:calc(${pos.x}% - 29px);top:calc(${pos.y}% - 29px);cursor:pointer;`;
+
+    return `<div
+      id="example-node-${idx}"
+      class="${classes}"
+      onclick="selectExample(${idx})"
+      style="${inlinePos}"
+      title="${item.title} • ${item.hex}"
+    >${item.display}</div>`;
+  }).join('');
+
+  // Create connectors. Their exact geometry is calculated from the
+  // rendered circles so every line touches both circle edges.
+  document.getElementById('exampleLinks').innerHTML = positions.slice(1).map((pos,i)=>{
+    const idx = i + 1;
+    return `<div id="example-link-${idx}" class="example-link"></div>`;
+  }).join('');
+
+  requestAnimationFrame(() => {
+    updateExampleLines();
+    selectExample(0);
+  });
+}
+
+function updateExampleLines(){
+  const graph = document.getElementById('exampleGraph');
+  const centerNode = document.getElementById('example-node-0');
+  if(!graph || !centerNode) return;
+
+  const graphRect = graph.getBoundingClientRect();
+  const c = centerNode.getBoundingClientRect();
+
+  const cx = c.left - graphRect.left + c.width / 2;
+  const cy = c.top  - graphRect.top  + c.height / 2;
+  const centerRadius = c.width / 2;
+
+  const set = exampleSets[activeExampleFamily];
+
+  for(let idx = 1; idx < set.nodes.length; idx++){
+    const node = document.getElementById('example-node-' + idx);
+    const line = document.getElementById('example-link-' + idx);
+    if(!node || !line) continue;
+
+    const n = node.getBoundingClientRect();
+    const nx = n.left - graphRect.left + n.width / 2;
+    const ny = n.top  - graphRect.top  + n.height / 2;
+    const targetRadius = n.width / 2;
+
+    const dx = nx - cx;
+    const dy = ny - cy;
+    const distance = Math.hypot(dx, dy);
+    if(!distance) continue;
+
+    const ux = dx / distance;
+    const uy = dy / distance;
+
+    // Start at the edge of the centre circle and stop at the edge
+    // of the destination circle so the connector never floats.
+    const startX = cx + ux * centerRadius;
+    const startY = cy + uy * centerRadius;
+    const endX   = nx - ux * targetRadius;
+    const endY   = ny - uy * targetRadius;
+
+    const lineDx = endX - startX;
+    const lineDy = endY - startY;
+    const lineLength = Math.hypot(lineDx, lineDy);
+    const angle = Math.atan2(lineDy, lineDx) * 180 / Math.PI;
+
+    line.style.left = startX + 'px';
+    line.style.top = startY + 'px';
+    line.style.width = lineLength + 'px';
+    line.style.transform = `rotate(${angle}deg)`;
+  }
+}
+
+function selectExample(idx){
+  selectedExampleIndex = idx;
+  const set = exampleSets[activeExampleFamily];
+  const item = set.nodes[idx];
+
+  document.querySelectorAll('#exampleMode .domain-node').forEach(n=>n.classList.remove('selected'));
+  document.querySelectorAll('#exampleMode .example-link').forEach(l=>l.classList.remove('selected'));
+
+  const node = document.getElementById('example-node-' + idx);
+  if(node) node.classList.add('selected');
+
+  // Selection changes borders/shadows only; keep connector geometry locked.
+  requestAnimationFrame(updateExampleLines);
+
+  // Highlight only the connector for the selected alternate node.
+  // Original/center selection has no blue connector.
+  if(idx > 0){
+    const link = document.getElementById('example-link-' + idx);
+    if(link) link.classList.add('selected');
+  }
+
+  document.getElementById('exampleSimilarity').textContent = item.similarity + '%';
+
+  document.getElementById('exampleContent').innerHTML = `
+    <div class="example-box selected">
+      <div class="example-head">
+        <div><span style="color:#3478f6">◉</span> <strong>${item.title}</strong></div>
+        <span class="hex">Hex signature: ${item.hex}</span>
+      </div>
+
+      <div class="compare">
+        <div>
+          <small>Deceptive sequence</small>
+          <strong>${item.domain}</strong>
+        </div>
+        <div>
+          <small>Punycode output resolution</small>
+          <strong><code style="color:#246bfd">${item.puny}</code></strong>
+        </div>
+      </div>
+
+      <p class="example-description">${item.description}</p>
+    </div>
+  `;
+}
+window.addEventListener('resize', updateExampleLines);
+window.addEventListener('resize', ()=>updateNormalLink(document.querySelector('#normalNodes .node.selected')?.id.split('-')[1] || 0));
+
+
+/* =========================================================
+   TRY IT YOURSELF ENGINE
+   ========================================================= */
+
+const tryHomoglyphMap = {
+  a: {
+    cyrillic:['а'],
+    greek:['α'],
+    other:['ɑ','ａ']
+  },
+  b: {
+    cyrillic:['Ь','Ъ'],
+    greek:['β'],
+    other:['ｂ']
+  },
+  c: {
+    cyrillic:['с'],
+    greek:['ϲ'],
+    other:['ｃ']
+  },
+  d: {
+    cyrillic:['ԁ'],
+    greek:[],
+    other:['ⅾ','ｄ']
+  },
+  e: {
+    cyrillic:['е'],
+    greek:['ε','ϵ'],
+    other:['ｅ']
+  },
+  g: {
+    cyrillic:['ԍ'],
+    greek:[],
+    other:['ɡ','ｇ']
+  },
+  h: {
+    cyrillic:['һ'],
+    greek:[],
+    other:['ｈ']
+  },
+  i: {
+    cyrillic:['і'],
+    greek:['ι'],
+    other:['ı','ｉ']
+  },
+  j: {
+    cyrillic:['ј'],
+    greek:[],
+    other:['ｊ']
+  },
+  k: {
+    cyrillic:['к'],
+    greek:['κ'],
+    other:['ｋ']
+  },
+  l: {
+    cyrillic:[],
+    greek:[],
+    other:['ⅼ','ｌ']
+  },
+  m: {
+    cyrillic:['м'],
+    greek:['μ'],
+    other:['ｍ']
+  },
+  n: {
+    cyrillic:['п'],
+    greek:['η'],
+    other:['ｎ']
+  },
+  o: {
+    cyrillic:['о'],
+    greek:['ο'],
+    other:['օ','ｏ']
+  },
+  p: {
+    cyrillic:['р'],
+    greek:['ρ'],
+    other:['ｐ']
+  },
+  q: {
+    cyrillic:[],
+    greek:[],
+    other:['ԛ','ｑ']
+  },
+  r: {
+    cyrillic:['г'],
+    greek:[],
+    other:['ｒ']
+  },
+  s: {
+    cyrillic:['ѕ'],
+    greek:[],
+    other:['ｓ']
+  },
+  t: {
+    cyrillic:['т'],
+    greek:['τ'],
+    other:['ｔ']
+  },
+  u: {
+    cyrillic:['ц'],
+    greek:['υ'],
+    other:['ｕ']
+  },
+  v: {
+    cyrillic:['ѵ'],
+    greek:['ν'],
+    other:['ｖ']
+  },
+  w: {
+    cyrillic:[],
+    greek:['ω'],
+    other:['ｗ']
+  },
+  x: {
+    cyrillic:['х'],
+    greek:['χ'],
+    other:['ⅹ','ｘ']
+  },
+  y: {
+    cyrillic:['у'],
+    greek:['γ'],
+    other:['ｙ']
+  },
+  z: {
+    cyrillic:['ᴢ'],
+    greek:['ζ'],
+    other:['ｚ']
+  }
+};
+
+let tryCurrentFilter = 'all';
+let tryVariants = [];
+let tryVisibleVariants = [];
+let trySelectedIndex = 0;
+
+/* Small RFC 3492 Punycode encoder, used locally for the demo. */
+function punyAdapt(delta, numPoints, firstTime){
+  delta = firstTime ? Math.floor(delta / 700) : (delta >> 1);
+  delta += Math.floor(delta / numPoints);
+  let k = 0;
+  while(delta > 455){
+    delta = Math.floor(delta / 35);
+    k += 36;
+  }
+  return k + Math.floor((36 * delta) / (delta + 38));
+}
+
+function punyDigitToBasic(digit){
+  return digit + 22 + 75 * (digit < 26);
+}
+
+function encodePunyLabel(input){
+  const codePoints = Array.from(input).map(ch => ch.codePointAt(0));
+  let n = 128;
+  let delta = 0;
+  let bias = 72;
+  let output = '';
+
+  const basic = codePoints.filter(cp => cp < 128);
+  output = String.fromCodePoint(...basic);
+  let h = basic.length;
+  const b = h;
+
+  if(b > 0 && h < codePoints.length) output += '-';
+
+  while(h < codePoints.length){
+    let m = Infinity;
+    for(const cp of codePoints){
+      if(cp >= n && cp < m) m = cp;
+    }
+
+    delta += (m - n) * (h + 1);
+    n = m;
+
+    for(const cp of codePoints){
+      if(cp < n) delta++;
+      if(cp === n){
+        let q = delta;
+        for(let k = 36;;k += 36){
+          const t = k <= bias ? 1 : (k >= bias + 26 ? 26 : k - bias);
+          if(q < t) break;
+          const code = t + ((q - t) % (36 - t));
+          output += String.fromCharCode(punyDigitToBasic(code));
+          q = Math.floor((q - t) / (36 - t));
+        }
+        output += String.fromCharCode(punyDigitToBasic(q));
+        bias = punyAdapt(delta, h + 1, h === b);
+        delta = 0;
+        h++;
+      }
+    }
+
+    delta++;
+    n++;
+  }
+
+  return 'xn--' + output;
+}
+
+function toPunycodeDomain(domain){
+  return domain.split('.').map(label => {
+    if(!label) return label;
+    return /[^\x00-\x7F]/.test(label) ? encodePunyLabel(label) : label;
+  }).join('.');
+}
+
+function tryRiskForVariant(v){
+  if(v.isOriginal) return 'Safe';
+  if(v.scripts.size > 1) return 'High Risk';
+  if(v.changeCount >= 2) return 'High Risk';
+  return 'Elevated';
+}
+
+function normaliseTryInput(value){
+  return value.trim().toLowerCase().replace(/\s+/g,'').slice(0,60);
+}
+
+function candidateReplacements(ch){
+  const entry = tryHomoglyphMap[ch.toLowerCase()];
+  if(!entry) return [];
+  const out = [];
+  for(const [script, chars] of Object.entries(entry)){
+    for(const glyph of chars){
+      out.push({glyph, script:script === 'other' ? 'extended' : script});
+    }
+  }
+  return out;
+}
+
+function buildTryVariants(input){
+  if(!input) return [];
+
+  const chars = Array.from(input);
+  const results = [];
+  const seen = new Set();
+
+  function addVariant(arr, scripts, changedIndices){
+    const domain = arr.join('');
+    if(seen.has(domain)) return;
+    seen.add(domain);
+
+    results.push({
+      domain,
+      puny:toPunycodeDomain(domain),
+      scripts:new Set(scripts),
+      changedIndices:[...changedIndices],
+      changeCount:changedIndices.length,
+      isOriginal:changedIndices.length === 0
+    });
+  }
+
+  addVariant(chars, [], []);
+
+  // Single-character substitutions.
+  const optionsByIndex = [];
+  chars.forEach((ch, idx) => {
+    const reps = candidateReplacements(ch);
+    optionsByIndex[idx] = reps;
+    reps.forEach(rep => {
+      const arr = [...chars];
+      arr[idx] = rep.glyph;
+      addVariant(arr, [rep.script], [idx]);
+    });
+  });
+
+  // Two-character substitutions create the denser matrix shown in the video.
+  // Capped to keep the standalone demo responsive.
+  for(let i=0;i<chars.length;i++){
+    const aOpts = optionsByIndex[i] || [];
+    if(!aOpts.length) continue;
+
+    for(let j=i+1;j<chars.length;j++){
+      const bOpts = optionsByIndex[j] || [];
+      if(!bOpts.length) continue;
+
+      for(const a of aOpts){
+        for(const b of bOpts){
+          const arr = [...chars];
+          arr[i] = a.glyph;
+          arr[j] = b.glyph;
+          addVariant(arr, [a.script,b.script], [i,j]);
+          if(results.length >= 300) return results;
+        }
+      }
+    }
+  }
+
+  return results;
+}
+
+function variantMatchesFilter(v){
+  if(tryCurrentFilter === 'all') return true;
+  if(v.isOriginal) return true;
+  return v.scripts.has(tryCurrentFilter);
+}
+
+function renderTryDomainHighlighted(v){
+  const chars = Array.from(v.domain);
+  return chars.map((ch,idx) =>
+    v.changedIndices.includes(idx)
+      ? `<span class="changed-char">${escapeTryHtml(ch)}</span>`
+      : escapeTryHtml(ch)
+  ).join('');
+}
+
+function escapeTryHtml(str){
+  return String(str)
+    .replaceAll('&','&amp;')
+    .replaceAll('<','&lt;')
+    .replaceAll('>','&gt;')
+    .replaceAll('"','&quot;')
+    .replaceAll("'","&#039;");
+}
+
+function refreshTryVariants(){
+  const inputEl = document.getElementById('tryDomainInput');
+  if(!inputEl) return;
+
+  const input = normaliseTryInput(inputEl.value);
+  tryVariants = buildTryVariants(input);
+  tryVisibleVariants = tryVariants.filter(variantMatchesFilter);
+
+  document.getElementById('tryTotalCombos').textContent = tryVariants.length;
+
+  if(!tryVisibleVariants.length){
+    document.getElementById('tryVariantGrid').innerHTML =
+      `<div class="empty-matrix">No supported homoglyph combinations for this input.</div>`;
+    document.getElementById('tryOriginalPreview').textContent = input || '—';
+    document.getElementById('trySpoofPreview').textContent = input || '—';
+    document.getElementById('tryPunyPreview').textContent = input || '—';
+    document.getElementById('tryActiveVariant').textContent = '#0';
+    document.getElementById('tryRiskStatus').textContent = 'Safe';
+    document.getElementById('tryRiskStatus').className = 'try-risk-safe';
+    return;
+  }
+
+  trySelectedIndex = 0;
+  renderTryMatrix();
+  selectTryVariant(0);
+}
+
+function renderTryMatrix(){
+  const grid = document.getElementById('tryVariantGrid');
+
+  grid.innerHTML = tryVisibleVariants.map((v,idx)=>`
+    <button class="variant-item ${idx===trySelectedIndex?'active':''}"
+      onclick="selectTryVariant(${idx})"
+      title="${escapeTryHtml(v.domain)}">
+      <span class="variant-domain">${renderTryDomainHighlighted(v)}</span>
+      <span class="variant-puny">${escapeTryHtml(v.puny)}</span>
+    </button>
+  `).join('');
+}
+
+function selectTryVariant(index){
+  const v = tryVisibleVariants[index];
+  if(!v) return;
+
+  trySelectedIndex = index;
+  const original = normaliseTryInput(document.getElementById('tryDomainInput').value);
+
+  document.getElementById('tryOriginalPreview').textContent = original || '—';
+  document.getElementById('trySpoofPreview').innerHTML = renderTryDomainHighlighted(v);
+  document.getElementById('tryPunyPreview').textContent = v.puny;
+  document.getElementById('tryActiveVariant').textContent = '#' + (index + 1);
+
+  const risk = tryRiskForVariant(v);
+  const riskEl = document.getElementById('tryRiskStatus');
+  riskEl.textContent = risk;
+  riskEl.className = risk === 'Safe' ? 'try-risk-safe' : 'try-risk-high';
+
+  const card = document.getElementById('trySpoofCard');
+  const label = document.getElementById('trySpoofLabel');
+
+  if(v.isOriginal){
+    card.classList.remove('spoof');
+    card.classList.add('clean');
+    label.textContent = '✓ Clean State';
+  }else{
+    card.classList.remove('clean');
+    card.classList.add('spoof');
+    label.textContent = '⚠ Spoofed / Masked Domain';
+  }
+
+  document.querySelectorAll('#tryVariantGrid .variant-item').forEach((el,i)=>{
+    el.classList.toggle('active', i === index);
+  });
+}
+
+function setTryFilter(filter, btn){
+  tryCurrentFilter = filter;
+  document.querySelectorAll('#tryMode .try-tabs button').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+
+  tryVisibleVariants = tryVariants.filter(variantMatchesFilter);
+  trySelectedIndex = 0;
+  renderTryMatrix();
+  if(tryVisibleVariants.length) selectTryVariant(0);
+}
+
+function exportTryVariants(){
+  if(!tryVisibleVariants.length) return;
+
+  const input = normaliseTryInput(document.getElementById('tryDomainInput').value);
+  const lines = [
+    'IDN Homograph Transformation Report',
+    '===================================',
+    'Target: ' + input,
+    'Filter: ' + tryCurrentFilter,
+    'Total generated: ' + tryVariants.length,
+    '',
+    ...tryVisibleVariants.map((v,i)=>
+      `${i+1}. ${v.domain}\n   Punycode: ${v.puny}\n   Risk: ${tryRiskForVariant(v)}`
+    )
+  ];
+
+  const blob = new Blob([lines.join('\n')], {type:'text/plain;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `idn_homograph_${input || 'report'}.txt`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+
+buildTabs();
+renderNormal('a');
+showExample('cyr');
+refreshTryVariants();
+</script>
+
+<footer class="edu-footer">
+  <div class="edu-shell edu-footer-row">
+    <div>© 2026 IDN Homograph Explorer · Educational cybersecurity project</div>
+    <div class="edu-footer-links">
+      <a href="index.html#learn">Learn</a>
+      <a href="index.html#protection">Browser Protections</a>
+      <a href="index.html#references">References</a>
+      <a href="index.html#faq">FAQ</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
